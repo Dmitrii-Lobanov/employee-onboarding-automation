@@ -28,13 +28,13 @@ The project excludes authentication, file uploads, equipment inventory, offboard
 
 ## Workflow states
 
-| Current state | Next state | Meaning |
-|---|---|---|
-| Draft | Ready | HR submits a prepared case for processing |
-| Ready | Processing | The workflow claims the case |
-| Processing | Completed | Every expected task exists in Airtable and PostgreSQL |
-| Processing | Failed | Validation or processing cannot finish |
-| Failed | Ready | HR corrects the problem and requests another attempt |
+| Current state | Next state | Meaning                                               |
+| ------------- | ---------- | ----------------------------------------------------- |
+| Draft         | Ready      | HR submits a prepared case for processing             |
+| Ready         | Processing | The workflow claims the case                          |
+| Processing    | Completed  | Every expected task exists in Airtable and PostgreSQL |
+| Processing    | Failed     | Validation or processing cannot finish                |
+| Failed        | Ready      | HR corrects the problem and requests another attempt  |
 
 No other state transitions are part of this project. A failure in one case must not prevent the workflow from processing other Ready cases.
 
@@ -88,8 +88,8 @@ Given a valid Ready case with no applicable active templates, when the workflow 
 **AC-06 — Deadline calculation (BR-05):**  
 Given a start date of `2026-11-10` and applicable templates with offsets of `-3`, `0`, and `+2` calendar days, when tasks are generated, then their deadlines are `2026-11-07`, `2026-11-10`, and `2026-11-12`.
 
-**AC-07 — Repeated processing (BR-06):**  
-Given a case with three expected tasks already generated, when processing is repeated for that same case, then exactly three tasks remain in each system, with one task per case-and-template combination.
+**AC-07 — Repeated task generation (BR-06):**  
+Given a case in Processing with three applicable templates and all three corresponding tasks already present, when the task-generation step runs again for that case, then exactly three tasks remain in each system, with one task per case-and-template combination. The case does not need to leave Completed or make a new state transition to demonstrate idempotency.
 
 **AC-08 — Partial failure and retry (BR-06, BR-09):**  
 Given a case with three applicable templates and only one task successfully created before an attempt fails, when the case is marked Ready and retried, then the existing task is preserved, the two missing tasks are created, and no duplicates exist.
