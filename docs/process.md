@@ -33,8 +33,18 @@ flowchart TD
     L -- Yes --> M["PostgreSQL: record intended notification in outbox"]
     M --> N{"Outbox write succeeded?"}
     N -- No --> X
-    N -- Yes --> O["Mark case Completed and record successful attempt"]
-    O --> D
+    N -- Yes --> O["Airtable: mark case Completed"]
+    O --> P{"Completion update confirmed?"}
+    P -- No, case remains Processing --> X
+    P -- Uncertain --> V["Read current Airtable case status"]
+    V -- Processing --> X
+    V -- Completed --> S
+    V -- Read fails --> U
+    P -- Yes --> S["PostgreSQL: record successful attempt"]
+    S --> T{"Success record confirmed?"}
+    T -- Yes --> D
+    T -- No or uncertain --> U["Flag audit mismatch for reconciliation"]
+    U --> D
 
     X --> Y["Mark this case Failed"]
     Y --> D
@@ -43,7 +53,7 @@ flowchart TD
     R -. "Next workflow execution" .-> C
 ```
 
-The error path applies to a failure in validation, template selection, deadline calculation, task creation, final verification, or outbox recording. Processing the next case continues even if the current case fails.
+The error path applies to a failure in validation, template selection, deadline calculation, task creation, final verification, outbox recording, or a completion update that is confirmed not to have changed the case. Processing the next case continues even if the current case fails.
 
 ## State-transition rules
 
@@ -66,3 +76,5 @@ A task is uniquely identified by its onboarding case and task template. Before c
 For example, if a case requires three tasks but an attempt creates only the first task before failing, HR can return the case from Failed to Ready after the cause is corrected. The next attempt finds the first task, creates the other two, verifies all three in both systems, and then completes the case.
 
 The diagram describes the normal failure path. A process stopped unexpectedly while a case is Processing cannot run its error-handling steps. We will document how to detect and recover such a stranded case when we design workflow operations and reconciliation.
+
+The final Airtable status update and PostgreSQL audit update cannot be one transaction. If Airtable confirms the case is Completed but the success audit write fails or has an uncertain result, n8n must not try to move the case from Completed to Failed. The mismatch needs reconciliation and repair of the audit record. If the Airtable completion result is uncertain, n8n must first read the current case status before choosing either the failure path or reconciliation path. These are operational recovery rules; they add no new case-state transitions.
